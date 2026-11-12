@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Pasangan Ajaib - Game Memori</title>
+<style>
+  :root{--card:rgba(255,255,255,.13);--muted:#cfe9ff;--yellow:#ffd23f;--mint:#3ef0c0;--pink:#ff5fa2;--blue:#4cc9ff}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
+  html,body{margin:0;height:100%;overflow:hidden;font-family:"Trebuchet MS","Segoe UI",Verdana,sans-serif;color:#fff;
+    background:radial-gradient(circle at 20% 10%,#2b6fd6 0%,transparent 45%),radial-gradient(circle at 90% 90%,#e0409a 0%,transparent 45%),#1c1055;touch-action:manipulation}
+  #app{max-width:560px;height:100%;height:100dvh;margin:0 auto;display:flex;flex-direction:column;padding:10px 10px calc(10px + env(safe-area-inset-bottom));gap:8px}
+  #hud{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+  .chip{background:var(--card);border:1px solid rgba(255,255,255,.22);border-radius:14px;padding:6px 4px;text-align:center;backdrop-filter:blur(6px)}
+  .chip small{display:block;font-size:11px;color:var(--muted)}
+  .chip b{font-size:20px;line-height:1.2}
+  #score b{color:var(--yellow)} #level b{color:var(--mint)} #time b{color:var(--blue)} #best b{color:var(--pink)}
+  #time.low b{color:#ff6b6b;animation:blink .5s infinite alternate}
+  @keyframes blink{to{opacity:.4}}
+  #bar{height:8px;border-radius:99px;background:rgba(255,255,255,.15);overflow:hidden}
+  #barfill{height:100%;width:100%;background:linear-gradient(90deg,var(--mint),var(--yellow),var(--pink));border-radius:99px;transition:width .1s linear}
+  #stage{position:relative;flex:1;min-height:0;border-radius:22px;overflow:hidden;background:rgba(10,5,50,.35);border:2px solid rgba(255,255,255,.22);box-shadow:0 10px 40px rgba(0,0,0,.35);padding:10px}
+  #board{width:100%;height:100%;display:grid;gap:8px;margin:0 auto;transition:filter .2s}
+  #board.hidden{filter:blur(10px) brightness(.6)}
+  .card{position:relative;container-type:size;perspective:700px;cursor:pointer;border:0;background:none;padding:0;min-height:0;min-width:0}
+  .inner{position:absolute;inset:0;transform-style:preserve-3d;transition:transform .35s}
+  .card.open .inner,.card.done .inner{transform:rotateY(180deg)}
+  .face{position:absolute;inset:0;border-radius:16%;display:flex;align-items:center;justify-content:center;backface-visibility:hidden;-webkit-backface-visibility:hidden;box-shadow:0 4px 0 rgba(0,0,0,.25)}
+  .back{background:repeating-linear-gradient(45deg,#7f5af0 0 10px,#6b46e0 10px 20px);border:3px solid rgba(255,255,255,.55);font-size:40cqmin;color:rgba(255,255,255,.8)}
+  .front{background:linear-gradient(160deg,#fff,#ffe9f4);transform:rotateY(180deg);font-size:58cqmin;border:3px solid #fff}
+  .card.done .front{background:linear-gradient(160deg,#d9fff3,#9bf5d6);border-color:var(--mint);box-shadow:0 0 18px rgba(62,240,192,.8)}
+  .card.done{animation:pop .4s}
+  .card.wrong .front{background:linear-gradient(160deg,#ffe3e3,#ffb3b3);border-color:#ff6b6b}
+  .card.wrong{animation:shake .35s}
+  @keyframes pop{50%{transform:scale(1.12)}}
+  @keyframes shake{25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+  .card:focus-visible{outline:3px solid #fff;outline-offset:2px}
+  #combo{position:absolute;top:8px;right:12px;font-weight:700;color:var(--yellow);text-shadow:0 2px 6px rgba(0,0,0,.6);pointer-events:none;z-index:3}
+  #overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(15,8,60,.55);padding:16px;z-index:5}
+  #overlay.hide{display:none}
+  .panel{text-align:center;max-width:340px}
+  .panel h1{margin:0 0 6px;font-size:34px;line-height:1.1;color:var(--yellow);text-shadow:0 3px 0 #b8631c,0 8px 18px rgba(0,0,0,.4)}
+  .panel p{margin:8px 0;color:var(--muted);font-size:15px;line-height:1.45}
+  .legend{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;font-size:14px;margin:12px 0 16px}
+  .legend span{background:var(--card);border-radius:99px;padding:4px 10px}
+  #controls{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  button.btn{font:inherit;font-weight:700;font-size:16px;color:#fff;border:0;border-radius:16px;padding:13px 6px;cursor:pointer;box-shadow:0 5px 0 rgba(0,0,0,.28);transition:transform .08s,box-shadow .08s,opacity .2s}
+  button.btn:active{transform:translateY(4px);box-shadow:0 1px 0 rgba(0,0,0,.28)}
+  button.btn:disabled{opacity:.4;cursor:not-allowed}
+  button.btn:focus-visible{outline:3px solid #fff;outline-offset:2px}
+  .b-start{background:linear-gradient(180deg,#34e3a8,#12a97a)}
+  .b-pause{background:linear-gradient(180deg,#ffb83d,#e8821a)}
+  .b-restart{background:linear-gradient(180deg,#ff6b9c,#d6336c)}
+  #big{font-size:20px;padding:14px 34px;background:linear-gradient(180deg,#34e3a8,#12a97a)}
+  .hint{font-size:12px!important}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="hud">
+    <div class="chip" id="score"><small>Skor</small><b>0</b></div>
+    <div class="chip" id="level"><small>Level</small><b>1</b></div>
+    <div class="chip" id="time"><small>Waktu</small><b>0</b></div>
+    <div class="chip" id="best"><small>Terbaik</small><b>0</b></div>
+  </div>
+  <div id="bar"><div id="barfill"></div></div>
+
+  <div id="stage">
+    <div id="combo"></div>
+    <div id="board" class="hidden"></div>
+    <div id="overlay">
+      <div class="panel">
+        <h1 id="ovTitle">Pasangan Ajaib</h1>
+        <p id="ovText">Hafalkan kartu, lalu cocokkan semua pasangannya sebelum waktu habis!</p>
+        <div class="legend" id="ovLegend"><span>🃏 cocok = +100</span><span>🔥 combo = skor berlipat</span><span>⏱️ cocok = +2 detik</span></div>
+        <button class="btn" id="big">Mulai Main</button>
+        <p class="hint" id="ovHint">Ketuk atau klik kartu untuk membukanya.</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="controls">
+    <button class="btn b-start" id="btnStart">Start</button>
+    <button class="btn b-pause" id="btnPause" disabled>Pause</button>
+    <button class="btn b-restart" id="btnRestart">Restart</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  const $ = id => document.getElementById(id);
+  const board = $("board"), overlay = $("overlay"), big = $("big"), comboEl = $("combo"),
+        btnStart = $("btnStart"), btnPause = $("btnPause"), btnRestart = $("btnRestart"),
+        elScore = $("score").querySelector("b"), elLevel = $("level").querySelector("b"),
+        elTime = $("time").querySelector("b"), elBest = $("best").querySelector("b"), elBar = $("barfill");
+  const SYMBOLS = ["🍎","🍌","🍇","🍓","🍉","🍒","🥝","🍍","🥥","🍑","🍋","🥭","🍔","🍕","🍩","🍪"];
+  let best = 0;
+  try { best = parseInt(localStorage.getItem("pasanganAjaibBest") || "0", 10) || 0; } catch(e){}
+
+  const g = { state:"idle", resume:"play", level:1, score:0, time:0, timeMax:1, combo:0, first:null, second:null, mismatchT:0, previewT:0, matched:0, pairs:0, cards:[], overlayAction:"start" };
+
+  /* ---------- Suara ---------- */
+  let ac = null;
+  function beep(f, d, t, v, slide){
+    try{
+      if(!ac) ac = new (window.AudioContext || window.webkitAudioContext)();
+      if(ac.state === "suspended") ac.resume();
+      const o = ac.createOscillator(), gn = ac.createGain();
+      o.type = t || "sine"; o.frequency.value = f;
+      if(slide) o.frequency.exponentialRampToValueAtTime(slide, ac.currentTime + d);
+      gn.gain.value = v || .07; gn.gain.exponentialRampToValueAtTime(.0001, ac.currentTime + d);
+      o.connect(gn); gn.connect(ac.destination); o.start(); o.stop(ac.currentTime + d);
+    }catch(e){}
+  }
+
+  /* ---------- Konfigurasi level ---------- */
+  const pairsFor = l => [3, 6, 8, 10, 12][Math.min(l, 5) - 1];
+  const timeFor = l => { const p = pairsFor(l); return l <= 5 ? p * 4 + 6 : Math.max(32, 54 - (l - 5) * 3); };
+  const previewFor = l => Math.max(.9, 2.2 - l * .2);
+
+  function shuffle(a){ for(let i = a.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+
+  function buildLevel(){
+    g.pairs = pairsFor(g.level); g.matched = 0; g.first = g.second = null; g.mismatchT = 0; g.combo = 0;
+    g.timeMax = g.time = timeFor(g.level); g.previewT = previewFor(g.level);
+    const syms = shuffle(SYMBOLS.slice()).slice(0, g.pairs);
+    const deck = shuffle(syms.concat(syms));
+    const cols = deck.length === 6 ? 3 : 4, rows = Math.ceil(deck.length / cols);
+    board.innerHTML = ""; board.classList.remove("hidden");
+    board.style.gridTemplateColumns = `repeat(${cols}, 1fr)`; board.style.gridTemplateRows = `repeat(${rows}, 1fr)`;
+    // batasi lebar agar kartu tidak terlalu besar di layar lebar
+    board.style.maxWidth = (cols * 130) + "px";
+    g.cards = deck.map((s, i) => {
+      const el = document.createElement("button");
+      el.className = "card open"; el.setAttribute("aria-label", "Kartu " + (i + 1));
+      el.innerHTML = `<div class="inner"><div class="face back">?</div><div class="face front">${s}</div></div>`;
+      const c = { el, sym:s, open:true, done:false };
+      el.addEventListener("click", () => flip(c));
+      board.appendChild(el); return c;
+    });
+    comboEl.textContent = "";
+    updateHud();
+  }
+
+  /* ---------- Aksi ---------- */
+  function flip(c){
+    if(g.state !== "play" || c.open || c.done || g.second) return;
+    c.open = true; c.el.classList.add("open"); beep(500, .08, "triangle", .05);
+    if(!g.first){ g.first = c; return; }
+    g.second = c;
+    if(g.first.sym === c.sym){
+      g.combo++;
+      const pts = 100 * Math.min(5, g.combo);
+      g.score += pts; g.time = Math.min(g.timeMax, g.time + 2); g.matched++;
+      [g.first, c].forEach(x => { x.done = true; x.el.classList.add("done"); });
+      comboEl.textContent = g.combo > 1 ? "🔥 Combo x" + Math.min(5, g.combo) + "  +" + pts : "+" + pts;
+      beep(700 + g.combo * 60, .18, "sine", .08, 1100 + g.combo * 60);
+      g.first = g.second = null;
+      if(g.matched === g.pairs) levelClear();
+    } else {
+      g.combo = 0; comboEl.textContent = "";
+      g.first.el.classList.add("wrong"); c.el.classList.add("wrong");
+      g.mismatchT = .75; beep(220, .2, "sawtooth", .06, 140);
+    }
+    updateHud();
+  }
+
+  function levelClear(){
+    g.state = "between";
+    const bonus = Math.floor(g.time) * 10; g.score += bonus; updateHud(); updateButtons();
+    beep(520, .5, "triangle", .09, 1400);
+    g.overlayAction = "next";
+    setTimeout(() => { if(g.state === "between") showOverlay("Level " + g.level + " selesai! 🎉", `Bonus waktu: <b style="color:#ffd23f">+${bonus}</b><br>Skor: <b>${g.score}</b>`, "Level " + (g.level + 1), false); }, 700);
+  }
+
+  function gameOver(){
+    g.state = "over"; g.overlayAction = "start";
+    const isNew = g.score > best;
+    if(isNew){ best = g.score; try{ localStorage.setItem("pasanganAjaibBest", String(best)); }catch(e){} }
+    beep(300, .6, "sawtooth", .09, 70);
+    board.classList.add("hidden");
+    showOverlay("Waktu Habis ⏰", `Skor akhir: <b style="color:#ffd23f;font-size:22px">${g.score}</b><br>Sampai level ${g.level}${isNew ? "<br>🏆 Rekor baru!" : ""}`, "Main Lagi", false);
+    updateHud(); updateButtons();
+  }
+
+  function start(){
+    g.level = 1; g.score = 0; beginLevel();
+  }
+  function beginLevel(){
+    buildLevel(); overlay.classList.add("hide"); g.state = "preview"; g.overlayAction = "start";
+    beep(480, .15, "triangle", .08, 900); updateButtons();
+  }
+  function togglePause(){
+    if(g.state === "play" || g.state === "preview"){
+      g.resume = g.state; g.state = "pause"; board.classList.add("hidden");
+      g.overlayAction = "resume"; showOverlay("Jeda ⏸", "Kartu disembunyikan selama jeda. Waktu berhenti.", "Lanjutkan", false);
+    } else if(g.state === "pause"){
+      g.state = g.resume; board.classList.remove("hidden"); overlay.classList.add("hide"); g.overlayAction = "start";
+    }
+    updateButtons();
+  }
+  function bigAction(){
+    if(g.overlayAction === "resume") togglePause();
+    else if(g.overlayAction === "next"){ g.level++; beginLevel(); }
+    else start();
+  }
+
+  /* ---------- UI ---------- */
+  function showOverlay(title, text, label, extras){
+    $("ovTitle").innerHTML = title; $("ovText").innerHTML = text; big.textContent = label;
+    $("ovHint").style.display = $("ovLegend").style.display = extras ? "" : "none";
+    overlay.classList.remove("hide"); big.focus({preventScroll:true});
+  }
+  function updateHud(){
+    elScore.textContent = g.score; elLevel.textContent = g.level; elBest.textContent = Math.max(best, g.score);
+    const t = Math.max(0, g.time); elTime.textContent = Math.ceil(t);
+    $("time").classList.toggle("low", g.state === "play" && t <= 8);
+    elBar.style.width = (g.timeMax ? t / g.timeMax * 100 : 100) + "%";
+  }
+  function updateButtons(){
+    const playing = g.state === "play" || g.state === "preview";
+    btnStart.disabled = playing || g.state === "between";
+    btnStart.textContent = g.state === "pause" ? "Lanjut" : "Start";
+    btnPause.disabled = !(playing || g.state === "pause");
+    btnPause.textContent = g.state === "pause" ? "Lanjut" : "Pause";
+  }
+
+  btnStart.onclick = () => { if(g.state === "pause") togglePause(); else if(g.state === "idle" || g.state === "over") start(); };
+  btnPause.onclick = togglePause;
+  btnRestart.onclick = start;
+  big.onclick = bigAction;
+  window.addEventListener("keydown", e => {
+    const k = e.key.toLowerCase();
+    if(k === "p"){ if(["play","preview","pause"].includes(g.state)) togglePause(); }
+    else if(k === "r") start();
+    else if(k === "enter" && !overlay.classList.contains("hide")){ e.preventDefault(); bigAction(); }
+  });
+  document.addEventListener("visibilitychange", () => { if(document.hidden && (g.state === "play" || g.state === "preview")) togglePause(); });
+
+  /* ---------- Timer permainan ---------- */
+  const TICK = .1;
+  setInterval(() => {
+    if(g.state === "preview"){
+      g.previewT -= TICK;
+      if(g.previewT <= 0){
+        g.cards.forEach(c => { c.open = false; c.el.classList.remove("open"); });
+        g.state = "play"; updateButtons(); beep(380, .1, "square", .04);
+      }
+    } else if(g.state === "play"){
+      g.time -= TICK;
+      if(g.mismatchT > 0){
+        g.mismatchT -= TICK;
+        if(g.mismatchT <= 0 && g.first && g.second){
+          [g.first, g.second].forEach(c => { c.open = false; c.el.classList.remove("open", "wrong"); });
+          g.first = g.second = null;
+        }
+      }
+      if(g.time <= 0){ g.time = 0; updateHud(); gameOver(); return; }
+      updateHud();
+    }
+  }, TICK * 1000);
+
+  updateHud(); updateButtons();
+  showOverlay("Pasangan Ajaib", "Hafalkan kartu, lalu cocokkan semua pasangannya sebelum waktu habis!", "Mulai Main", true);
+})();
+</script>
+</body>
+</html>
